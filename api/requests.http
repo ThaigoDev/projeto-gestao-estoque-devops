@@ -1,0 +1,71 @@
+@base = http://localhost:8080
+
+### Info (versao e instancia)
+GET {{base}}/api/info
+
+### Cadastrar produto
+POST {{base}}/api/produtos
+Content-Type: application/json
+
+{
+  "codigo": "ARZ-5KG",
+  "nome": "Arroz 5kg",
+  "categoria": "Alimentos",
+  "precoVenda": 27.90,
+  "precoCusto": 19.50,
+  "estoqueMinimo": 5,
+  "estoqueInicial": 10
+}
+
+### Listar produtos
+GET {{base}}/api/produtos
+
+### Produtos sem estoque
+GET {{base}}/api/produtos?estoque=zerado
+
+### Editar produto (troque o id)
+PUT {{base}}/api/produtos/COLOQUE_O_ID
+Content-Type: application/json
+
+{
+  "codigo": "ARZ-5KG",
+  "nome": "Arroz Tipo 1 5kg",
+  "categoria": "Alimentos",
+  "precoVenda": 28.50,
+  "estoqueMinimo": 5
+}
+
+### Entrada de mercadoria
+POST {{base}}/api/entradas
+Content-Type: application/json
+
+{
+  "produtoId": "COLOQUE_O_ID",
+  "quantidade": 20,
+  "custoUnitario": 19.00,
+  "fornecedor": "Distribuidora X"
+}
+
+### Registrar venda
+POST {{base}}/api/vendas
+Content-Type: application/json
+
+{
+  "itens": [ { "produtoId": "COLOQUE_O_ID", "quantidade": 2 } ],
+  "formaPagamento": "PIX"
+}
+
+### Historico de vendas
+GET {{base}}/api/vendas
+
+### Dashboard
+GET {{base}}/api/dashboard
+
+### Faturamento (ultimos 30 dias)
+GET {{base}}/api/relatorios/faturamento
+
+### Produtos mais vendidos
+GET {{base}}/api/relatorios/produtos-mais-vendidos?limite=5
+
+### Reposicoes pendentes (Worker)
+GET {{base}}/api/reposicoes
