@@ -1,0 +1,30 @@
+server:
+  # Porta so para /status e /actuator/health (a API usa a 8080)
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: estoque-worker
+  data:
+    mongodb:
+      # Local: mongodb://localhost:27017/estoque
+      # Docker Compose / Kubernetes: mongodb://mongo:27017/estoque (nome do service)
+      uri: ${MONGODB_URI:mongodb://localhost:27017/estoque}
+  jackson:
+    default-property-inclusion: non_null
+
+worker:
+  # Intervalo entre as verificacoes (60000 ms = 1 minuto, exigencia do trabalho)
+  intervalo-ms: ${WORKER_INTERVALO_MS:60000}
+  # Espera antes da primeira verificacao, para o Mongo terminar de subir
+  atraso-inicial-ms: ${WORKER_ATRASO_INICIAL_MS:5000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
