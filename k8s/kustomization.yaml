@@ -1,0 +1,21 @@
+# Aplicar tudo:  kubectl apply -k k8s
+# Troque lucashc1011 pelo usuario do Docker Hub e a tag para trocar de versao.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: estoque
+resources:
+  - 00-namespace.yaml
+  - 10-mongo.yaml
+  - 20-api.yaml
+  - 30-frontend.yaml
+  - 40-worker.yaml
+images:
+  - name: lucashc1011/estoque-api
+    newName: lucashc1011/estoque-api
+    newTag: v1
+  - name: lucashc1011/estoque-frontend
+    newName: lucashc1011/estoque-frontend
+    newTag: v1
+  - name: lucashc1011/estoque-worker
+    newName: lucashc1011/estoque-worker
+    newTag: v1
