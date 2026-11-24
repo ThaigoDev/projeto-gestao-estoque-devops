@@ -4,7 +4,7 @@ metadata:
   name: api
   namespace: estoque
 spec:
-  replicas: 3
+  replicas: 2             # K3: API com 2 replicas
   selector:
     matchLabels: { app: api }
   strategy:
@@ -16,6 +16,11 @@ spec:
     metadata:
       labels: { app: api }
     spec:
+      # Espera o Mongo aceitar conexoes antes de iniciar (evita reinicio no primeiro deploy).
+      initContainers:
+        - name: espera-mongo
+          image: lucashc1011/estoque-api:v1
+          command: ["sh", "-c", "until nc -z mongo 27017; do echo aguardando mongo; sleep 2; done"]
       containers:
         - name: api
           image: lucashc1011/estoque-api:v1   # trocado pelo kustomize (veja kustomization.yaml)

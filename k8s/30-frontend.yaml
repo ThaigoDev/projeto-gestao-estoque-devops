@@ -4,7 +4,7 @@ metadata:
   name: frontend
   namespace: estoque
 spec:
-  replicas: 3
+  replicas: 1             # K3: frontend com 1 replica
   selector:
     matchLabels: { app: frontend }
   strategy:
