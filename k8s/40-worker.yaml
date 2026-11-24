@@ -1,5 +1,8 @@
 # Worker (Pessoa 3). Verifica o estoque a cada minuto e grava em "reposicao".
-# Uma unica replica: com mais de uma, a checagem rodaria em duplicidade.
+# K3: exatamente 1 replica. O Worker e uma tarefa agendada (a cada minuto), nao atende
+# requisicoes: com 2 replicas a verificacao rodaria duas vezes por minuto, em paralelo,
+# e as duas poderiam registrar a mesma reposicao em duplicidade.
+# strategy Recreate: na atualizacao o Pod antigo para antes do novo subir (nunca 2 ao mesmo tempo).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,6 +18,11 @@ spec:
     metadata:
       labels: { app: worker }
     spec:
+      # Espera o Mongo aceitar conexoes antes de iniciar (evita reinicio no primeiro deploy).
+      initContainers:
+        - name: espera-mongo
+          image: lucashc1011/estoque-worker:v1
+          command: ["sh", "-c", "until nc -z mongo 27017; do echo aguardando mongo; sleep 2; done"]
       containers:
         - name: worker
           image: lucashc1011/estoque-worker:v1
@@ -35,3 +43,18 @@ spec:
           resources:
             requests: { cpu: 50m, memory: 128Mi }
             limits: { memory: 384Mi }
+---
+# Service interno (K2: um Service por servico). Ninguem chama o Worker para trabalhar;
+# ele so expoe /status e /actuator/health, uteis para conferir a ultima verificacao:
+#   kubectl -n estoque port-forward svc/worker 8082:8081  ->  http://localhost:8082/status
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker
+  namespace: estoque
+spec:
+  type: ClusterIP
+  selector: { app: worker }
+  ports:
+    - port: 8081
+      targetPort: 8081

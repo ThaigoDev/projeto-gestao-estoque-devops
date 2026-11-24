@@ -1,26 +1,29 @@
-# MongoDB com volume persistente (PVC). O Service "mongo" bate com a URI
-# mongodb://mongo:27017/estoque usada pela API e pelo Worker.
+# MongoDB (imagem oficial) com volume persistente.
+# - PersistentVolumeClaim: os dados ficam no volume, nao no Pod (K4/K6).
+# - Deployment com 1 replica e estrategia Recreate: o Pod antigo para antes do novo
+#   subir, pois o volume ReadWriteOnce so pode ser montado por um Pod de cada vez.
+# - Service ClusterIP "mongo": acessivel so de dentro do cluster, pela URI
+#   mongodb://mongo:27017/estoque usada pela API e pelo Worker.
 apiVersion: v1
-kind: Service
+kind: PersistentVolumeClaim
 metadata:
-  name: mongo
+  name: mongo-data
   namespace: estoque
-  labels: { app: mongo }
 spec:
-  clusterIP: None            # headless: exigido pelo StatefulSet
-  selector: { app: mongo }
-  ports:
-    - port: 27017
-      targetPort: 27017
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 1Gi
 ---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: mongo
   namespace: estoque
 spec:
-  serviceName: mongo
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels: { app: mongo }
   template:
@@ -40,19 +43,29 @@ spec:
               command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
             initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 5
           livenessProbe:
             exec:
               command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
             initialDelaySeconds: 30
             periodSeconds: 20
+            timeoutSeconds: 5
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits: { memory: 512Mi }
-  volumeClaimTemplates:
-    - metadata:
-        name: mongo-data
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        resources:
-          requests:
-            storage: 1Gi
+      volumes:
+        - name: mongo-data
+          persistentVolumeClaim:
+            claimName: mongo-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: estoque
+spec:
+  type: ClusterIP
+  selector: { app: mongo }
+  ports:
+    - port: 27017
+      targetPort: 27017
