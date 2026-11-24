@@ -17,8 +17,10 @@ RUN addgroup -S app && adduser -S app -G app
 COPY --from=build /app/target/estoque-api.jar app.jar
 USER app
 
+# Versao exibida em /api/info (use --build-arg APP_VERSION=v2 na imagem nova).
+ARG APP_VERSION=v1
 ENV MONGODB_URI=mongodb://mongo:27017/estoque \
-    APP_VERSION=v1 \
+    APP_VERSION=$APP_VERSION \
     JAVA_OPTS="-XX:MaxRAMPercentage=75"
 
 EXPOSE 8080

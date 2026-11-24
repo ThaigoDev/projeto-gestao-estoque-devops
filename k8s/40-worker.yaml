@@ -1,0 +1,37 @@
+# Worker (Pessoa 3). Verifica o estoque a cada minuto e grava em "reposicoes".
+# Uma unica replica: com mais de uma, a checagem rodaria em duplicidade.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: estoque
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: worker }
+  template:
+    metadata:
+      labels: { app: worker }
+    spec:
+      containers:
+        - name: worker
+          image: lucashc1011/estoque-worker:v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081       # so /actuator/health e /status
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8081 }
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8081 }
+            initialDelaySeconds: 40
+            periodSeconds: 10
+          env:
+            - name: MONGODB_URI
+              value: mongodb://mongo:27017/estoque
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 384Mi }

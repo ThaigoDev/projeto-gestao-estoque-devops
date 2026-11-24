@@ -1,0 +1,75 @@
+# Sistema de Estoque e Vendas - Docker Compose
+#
+#   docker compose up -d --build     # mongo + api + frontend + worker
+#
+# Frontend: http://localhost:3000   API: http://localhost:8080/api/info
+# Variaveis (opcionais) em um arquivo .env - veja .env.example.
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: estoque-app-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db          # volume persistente: os dados sobrevivem a "down"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks: [estoque]
+
+  api:
+    build:
+      context: ./api
+      args:
+        APP_VERSION: ${APP_VERSION:-v1}
+    image: ${DOCKERHUB_USER:-local}/estoque-api:${APP_VERSION:-v1}
+    container_name: estoque-app-api
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/estoque
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+    ports:
+      - "8080:8080"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks: [estoque]
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        APP_VERSION: ${APP_VERSION:-v1}
+    image: ${DOCKERHUB_USER:-local}/estoque-frontend:${APP_VERSION:-v1}
+    container_name: estoque-app-frontend
+    restart: unless-stopped
+    environment:
+      API_URL: http://api:8080       # o Nginx repassa /api/ para ca
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks: [estoque]
+
+  # Worker (Pessoa 3): verifica o estoque a cada minuto e grava em "reposicoes".
+  worker:
+    build:
+      context: ./worker
+    image: ${DOCKERHUB_USER:-local}/estoque-worker:${APP_VERSION:-v1}
+    container_name: estoque-app-worker
+    restart: unless-stopped
+    environment:
+      MONGODB_URI: mongodb://mongo:27017/estoque
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks: [estoque]
+
+volumes:
+  mongo-data:
+
+networks:
+  estoque:
