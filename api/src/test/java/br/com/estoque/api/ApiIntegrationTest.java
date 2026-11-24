@@ -40,9 +40,102 @@ class ApiIntegrationTest {
 
     @BeforeEach
     void limpar() {
-        for (String c : new String[] {"produtos", "entradas", "vendas", "reposicoes"}) {
+        for (String c : new String[] {"produtos", "fornecedores", "entradas", "vendas", "reposicao"}) {
             mongo.getCollection(c).deleteMany(new Document());
         }
+    }
+
+    @Autowired
+    br.com.estoque.api.config.MigracaoReposicao migracao;
+
+    @Test
+    void migraColecaoAntigaReposicoes() throws Exception {
+        mongo.getCollection("reposicao").insertOne(new Document("_id", "ja-na-nova").append("status", "PENDENTE"));
+        mongo.getCollection("reposicoes").insertOne(new Document("_id", "antiga").append("status", "PENDENTE"));
+        mongo.getCollection("reposicoes").insertOne(new Document("_id", "ja-na-nova").append("status", "PENDENTE"));
+
+        migracao.run(null);
+
+        assertThat(mongo.collectionExists("reposicoes")).isFalse();
+        assertThat(mongo.getCollection("reposicao").countDocuments()).isEqualTo(2);
+        mvc.perform(get("/api/reposicoes")).andExpect(jsonPath("$.length()").value(2));
+
+        migracao.run(null); // sem colecao antiga: nao faz nada
+        assertThat(mongo.getCollection("reposicao").countDocuments()).isEqualTo(2);
+    }
+
+    @Test
+    void fornecedoresPorCadastroEPelaEntrada() throws Exception {
+        String produto = criarProduto("P1", "Leite", "5.00", 0);
+
+        String body = mvc.perform(post("/api/fornecedores").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nome\":\"Laticinios Serra\",\"telefone\":\"(11) 1234-5678\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String serra = json.readTree(body).get("id").asText();
+
+        // nome repetido (com outra caixa/espacos) -> 409
+        mvc.perform(post("/api/fornecedores").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nome\":\"  laticinios   SERRA \"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.mensagem").value("Ja existe um fornecedor com este nome"));
+
+        // entrada por fornecedorId
+        mvc.perform(post("/api/entradas").contentType(MediaType.APPLICATION_JSON).content("""
+                {"produtoId":"%s","quantidade":5,"fornecedorId":"%s"}""".formatted(produto, serra)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.fornecedorId").value(serra))
+                .andExpect(jsonPath("$.fornecedor").value("Laticinios Serra"));
+
+        // entrada pelo nome (como a tela faz hoje): reaproveita o existente...
+        mvc.perform(post("/api/entradas").contentType(MediaType.APPLICATION_JSON).content("""
+                {"produtoId":"%s","quantidade":1,"fornecedor":"laticinios serra"}""".formatted(produto)))
+                .andExpect(jsonPath("$.fornecedorId").value(serra));
+        // ...ou cadastra um novo
+        mvc.perform(post("/api/entradas").contentType(MediaType.APPLICATION_JSON).content("""
+                {"produtoId":"%s","quantidade":1,"fornecedor":"Distribuidora Nova"}""".formatted(produto)))
+                .andExpect(status().isCreated());
+        mvc.perform(get("/api/fornecedores")).andExpect(jsonPath("$.length()").value(2));
+
+        // fornecedorId inexistente -> 404 e o estoque nao muda
+        mvc.perform(post("/api/entradas").contentType(MediaType.APPLICATION_JSON).content("""
+                {"produtoId":"%s","quantidade":100,"fornecedorId":"naoexiste"}""".formatted(produto)))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/produtos/" + produto)).andExpect(jsonPath("$.quantidadeEstoque").value(7));
+
+        mvc.perform(delete("/api/fornecedores/" + serra)).andExpect(status().isNoContent());
+        mvc.perform(get("/api/fornecedores")).andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    void cargaDeDadosDeExemplo() throws Exception {
+        mvc.perform(post("/api/dados-exemplo"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.produtos").value(12))
+                .andExpect(jsonPath("$.vendas").value(20))
+                .andExpect(jsonPath("$.produtosSemEstoque").value(2));
+
+        // segunda vez sem limpar -> recusado; com limpar -> recarrega igual
+        mvc.perform(post("/api/dados-exemplo")).andExpect(status().isUnprocessableEntity());
+        mvc.perform(post("/api/dados-exemplo?limpar=true")).andExpect(status().isCreated());
+
+        assertThat(mongo.getCollection("produtos").countDocuments()).isEqualTo(12);
+        assertThat(mongo.getCollection("fornecedores").countDocuments()).isEqualTo(3);
+        assertThat(mongo.getCollection("vendas").countDocuments()).isEqualTo(20);
+        mvc.perform(get("/api/produtos?estoque=zerado")).andExpect(jsonPath("$.length()").value(2));
+        mvc.perform(get("/api/relatorios/faturamento?inicio=2000-01-01&fim=2000-01-02"))
+                .andExpect(jsonPath("$.quantidadeVendas").value(0));
+        // vendas espalhadas por varios dias nos ultimos 14 dias
+        String rel = mvc.perform(get("/api/relatorios/faturamento"))
+                .andExpect(jsonPath("$.quantidadeVendas").value(20))
+                .andReturn().getResponse().getContentAsString();
+        long diasComVenda = 0;
+        for (JsonNode dia : json.readTree(rel).get("porDia")) {
+            if (dia.get("quantidadeVendas").asLong() > 0) {
+                diasComVenda++;
+            }
+        }
+        assertThat(diasComVenda).isGreaterThan(7);
     }
 
     @Test
@@ -79,7 +172,7 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$[0].semEstoque").value(true));
 
         // simula o Worker registrando reposicao
-        mongo.getCollection("reposicoes").insertOne(new Document("produtoId", arroz)
+        mongo.getCollection("reposicao").insertOne(new Document("produtoId", arroz)
                 .append("produtoNome", "Arroz 5kg").append("quantidadeAtual", 0)
                 .append("status", "PENDENTE").append("dataRegistro", java.util.Date.from(Instant.now())));
         mvc.perform(get("/api/dashboard"))

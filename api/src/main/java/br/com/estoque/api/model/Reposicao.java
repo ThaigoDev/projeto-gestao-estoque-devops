@@ -7,7 +7,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 /**
- * Colecao "reposicoes" - CONTRATO COM O WORKER (Pessoa 3).
+ * Colecao "reposicao" - CONTRATO COM O WORKER (Pessoa 3).
  *
  * Quem grava: o Worker, a cada minuto, insere um documento com status PENDENTE para cada
  * produto ativo com quantidadeEstoque == 0 que ainda nao tenha uma reposicao PENDENTE.
@@ -15,7 +15,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
  * Quem resolve: a API, ao registrar uma entrada de mercadoria, muda as reposicoes
  * PENDENTE daquele produto para RESOLVIDA e preenche dataResolucao.
  */
-@Document(collection = "reposicoes")
+@Document(collection = "reposicao")
 public class Reposicao {
 
     public static final String PENDENTE = "PENDENTE";

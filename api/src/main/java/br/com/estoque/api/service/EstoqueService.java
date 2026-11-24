@@ -16,6 +16,7 @@ import br.com.estoque.api.dto.EntradaRequest;
 import br.com.estoque.api.exception.EstoqueInsuficienteException;
 import br.com.estoque.api.exception.RecursoNaoEncontradoException;
 import br.com.estoque.api.model.EntradaMercadoria;
+import br.com.estoque.api.model.Fornecedor;
 import br.com.estoque.api.model.Produto;
 import br.com.estoque.api.model.Reposicao;
 import br.com.estoque.api.repository.EntradaMercadoriaRepository;
@@ -36,18 +37,27 @@ public class EstoqueService {
     private final MongoTemplate mongoTemplate;
     private final ProdutoRepository produtoRepository;
     private final EntradaMercadoriaRepository entradaRepository;
+    private final FornecedorService fornecedorService;
     private final Clock clock;
 
     public EstoqueService(MongoTemplate mongoTemplate, ProdutoRepository produtoRepository,
-                          EntradaMercadoriaRepository entradaRepository, Clock clock) {
+                          EntradaMercadoriaRepository entradaRepository, FornecedorService fornecedorService,
+                          Clock clock) {
         this.mongoTemplate = mongoTemplate;
         this.produtoRepository = produtoRepository;
         this.entradaRepository = entradaRepository;
+        this.fornecedorService = fornecedorService;
         this.clock = clock;
     }
 
     public EntradaMercadoria registrarEntrada(EntradaRequest req) {
         Instant agora = Instant.now(clock);
+
+        // Resolve o fornecedor antes de mexer no estoque: um fornecedorId invalido nao altera nada
+        if (!produtoRepository.existsByIdAndAtivoTrue(req.produtoId())) {
+            throw new RecursoNaoEncontradoException("Produto nao encontrado: " + req.produtoId());
+        }
+        Fornecedor fornecedor = fornecedorService.resolver(req.fornecedorId(), req.fornecedor());
 
         Query query = Query.query(Criteria.where("_id").is(req.produtoId()).and("ativo").is(true));
         Update update = new Update()
@@ -64,7 +74,10 @@ public class EstoqueService {
         entrada.setProdutoNome(produto.getNome());
         entrada.setQuantidade(req.quantidade());
         entrada.setCustoUnitario(req.custoUnitario());
-        entrada.setFornecedor(req.fornecedor());
+        if (fornecedor != null) {
+            entrada.setFornecedorId(fornecedor.getId());
+            entrada.setFornecedor(fornecedor.getNome());
+        }
         entrada.setObservacao(req.observacao());
         entrada.setEstoqueResultante(produto.getQuantidadeEstoque());
         entrada.setDataEntrada(agora);

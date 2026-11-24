@@ -22,7 +22,7 @@ import br.com.estoque.worker.model.ResultadoVerificacao;
  * (ver "Contrato com o Worker" no api/README.md):
  *
  * 1. Busca em "produtos" os ativos com quantidadeEstoque menor ou igual a zero.
- * 2. Para cada um, garante que exista UM documento em "reposicoes" com status PENDENTE.
+ * 2. Para cada um, garante que exista UM documento em "reposicao" com status PENDENTE.
  *    Se ja existir, so atualiza nome e quantidade; nao cria duplicado.
  *
  * Quem muda a reposicao para RESOLVIDA e a API, quando chega uma entrada de mercadoria.
@@ -31,7 +31,7 @@ import br.com.estoque.worker.model.ResultadoVerificacao;
 public class VerificacaoEstoqueService {
 
     public static final String COLECAO_PRODUTOS = "produtos";
-    public static final String COLECAO_REPOSICOES = "reposicoes";
+    public static final String COLECAO_REPOSICOES = "reposicao";
     public static final String STATUS_PENDENTE = "PENDENTE";
 
     private final MongoTemplate mongo;
@@ -75,7 +75,7 @@ public class VerificacaoEstoqueService {
         return new ResultadoVerificacao(agora, produtos.size(), novas, paraRepor);
     }
 
-    /** O _id do produto e ObjectId no Mongo; em "reposicoes" ele e gravado como string (contrato com a API). */
+    /** O _id do produto e ObjectId no Mongo; em "reposicao" ele e gravado como string (contrato com a API). */
     private static String idComoString(Object id) {
         return id instanceof ObjectId objectId ? objectId.toHexString() : String.valueOf(id);
     }

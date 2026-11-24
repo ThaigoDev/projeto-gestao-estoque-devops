@@ -4,7 +4,7 @@ Serviço separado da API (Java 21 + Spring Boot) que roda sozinho **a cada minut
 
 1. Verifica todos os produtos cadastrados no MongoDB.
 2. Identifica os produtos ativos com **estoque igual a zero** (ou menor).
-3. Registra esses produtos na lista de reposição (coleção `reposicoes`, status `PENDENTE`).
+3. Registra esses produtos na lista de reposição (coleção `reposicao`, status `PENDENTE`).
 4. Recalcula o resumo dos relatórios (**quantidade total de vendas** e **faturamento total**) e grava na coleção `relatorios`.
 
 O Worker não recebe requisições do frontend. Ele só lê e grava no MongoDB, o mesmo banco da API.
@@ -23,13 +23,13 @@ Frontend -> |    API    | -----> |       |
 | Coleção | O que o Worker faz |
 |---|---|
 | `produtos` | Lê. Busca `ativo != false` e `quantidadeEstoque <= 0`. |
-| `reposicoes` | Cria um documento `PENDENTE` por produto zerado. Se já existe um `PENDENTE` para o produto, só atualiza nome e quantidade (não duplica). |
+| `reposicao` | Cria um documento `PENDENTE` por produto zerado. Se já existe um `PENDENTE` para o produto, só atualiza nome e quantidade (não duplica). |
 | `vendas` | Lê. Soma quantidade de vendas, faturamento (`valorTotal`) e itens vendidos. |
 | `relatorios` | Grava o resumo geral no documento `_id: "resumo-geral"`. |
 
 Quando chega uma entrada de mercadoria, **a API** muda a reposição para `RESOLVIDA`. Se o produto zerar de novo depois disso, o Worker cria uma nova reposição `PENDENTE`. O contrato completo está em [`api/README.md`](../api/README.md#contrato-com-o-worker-pessoa-3).
 
-Documento gravado em `reposicoes` (o mesmo formato que a API lê em `GET /api/reposicoes`):
+Documento gravado em `reposicao` (o mesmo formato que a API lê em `GET /api/reposicoes`):
 
 ```json
 {

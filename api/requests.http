@@ -3,6 +3,21 @@
 ### Info (versao e instancia)
 GET {{base}}/api/info
 
+### Carregar dados de exemplo (APAGA tudo antes)
+POST {{base}}/api/dados-exemplo?limpar=true
+
+### Fornecedores
+GET {{base}}/api/fornecedores
+
+### Cadastrar fornecedor
+POST {{base}}/api/fornecedores
+Content-Type: application/json
+
+{
+  "nome": "Distribuidora X",
+  "telefone": "(11) 99999-0000"
+}
+
 ### Cadastrar produto
 POST {{base}}/api/produtos
 Content-Type: application/json

@@ -54,7 +54,7 @@ services:
       - api
     networks: [estoque]
 
-  # Worker (Pessoa 3): verifica o estoque a cada minuto e grava em "reposicoes".
+  # Worker (Pessoa 3): verifica o estoque a cada minuto e grava em "reposicao".
   worker:
     build:
       context: ./worker

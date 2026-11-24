@@ -46,7 +46,7 @@ class WorkerIntegrationTest {
 
     @BeforeEach
     void limpar() {
-        for (String c : new String[] {"produtos", "vendas", "reposicoes", "relatorios"}) {
+        for (String c : new String[] {"produtos", "vendas", "reposicao", "relatorios"}) {
             mongo.getCollection(c).deleteMany(new Document());
         }
     }
@@ -63,7 +63,7 @@ class WorkerIntegrationTest {
         assertThat(r.produtosSemEstoque()).isEqualTo(2);
         assertThat(r.novasReposicoes()).isEqualTo(2);
 
-        List<Document> reposicoes = mongo.getCollection("reposicoes").find().into(new java.util.ArrayList<>());
+        List<Document> reposicoes = mongo.getCollection("reposicao").find().into(new java.util.ArrayList<>());
         assertThat(reposicoes).extracting(d -> d.getString("produtoId"))
                 .containsExactlyInAnyOrder(arroz.toHexString(), oleo.toHexString());
 
@@ -84,7 +84,7 @@ class WorkerIntegrationTest {
 
         assertThat(segunda.produtosSemEstoque()).isEqualTo(1);
         assertThat(segunda.novasReposicoes()).isZero();
-        assertThat(mongo.getCollection("reposicoes").countDocuments()).isEqualTo(1);
+        assertThat(mongo.getCollection("reposicao").countDocuments()).isEqualTo(1);
     }
 
     @Test
@@ -93,15 +93,15 @@ class WorkerIntegrationTest {
         verificacao.verificar();
 
         // A API resolve a reposicao quando chega mercadoria; depois o produto vende tudo de novo
-        mongo.getCollection("reposicoes").updateMany(
+        mongo.getCollection("reposicao").updateMany(
                 new Document("produtoId", arroz.toHexString()),
                 new Document("$set", new Document("status", "RESOLVIDA").append("dataResolucao", new Date())));
 
         ResultadoVerificacao r = verificacao.verificar();
 
         assertThat(r.novasReposicoes()).isEqualTo(1);
-        assertThat(mongo.getCollection("reposicoes").countDocuments()).isEqualTo(2);
-        assertThat(mongo.getCollection("reposicoes").countDocuments(new Document("status", "PENDENTE"))).isEqualTo(1);
+        assertThat(mongo.getCollection("reposicao").countDocuments()).isEqualTo(2);
+        assertThat(mongo.getCollection("reposicao").countDocuments(new Document("status", "PENDENTE"))).isEqualTo(1);
     }
 
     @Test

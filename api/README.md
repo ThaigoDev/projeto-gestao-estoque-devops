@@ -69,9 +69,10 @@ As colecoes e os indices sao criados automaticamente na primeira execucao.
 | Colecao | Quem escreve | Conteudo |
 |---|---|---|
 | `produtos` | API | Cadastro + `quantidadeEstoque` |
-| `entradas` | API | Historico de entradas de mercadoria |
+| `fornecedores` | API | Fornecedores (nome, CNPJ, telefone, e-mail) |
+| `entradas` | API | Historico de entradas de mercadoria (com `fornecedorId`) |
 | `vendas` | API | Vendas com os itens embutidos (nome e preco do momento da venda) |
-| `reposicoes` | **Worker** (cria) / API (resolve) | Produtos que zeraram e precisam de reposicao |
+| `reposicao` | **Worker** (cria) / API (resolve) | Produtos que zeraram e precisam de reposicao |
 
 Valores em dinheiro sao gravados como **Decimal128** (nao como double, para nao perder centavos).
 
@@ -80,7 +81,7 @@ Valores em dinheiro sao gravados como **Decimal128** (nao como double, para nao 
 O Worker, a cada minuto:
 
 1. Busca em `produtos` os documentos com `ativo: true` e `quantidadeEstoque: 0` (ou menor).
-2. Para cada um, **se ainda nao existir** documento em `reposicoes` com `produtoId` igual e `status: "PENDENTE"`, insere:
+2. Para cada um, **se ainda nao existir** documento em `reposicao` com `produtoId` igual e `status: "PENDENTE"`, insere:
 
 ```json
 {
@@ -94,7 +95,7 @@ O Worker, a cada minuto:
 
 Quando chega uma entrada de mercadoria, a API muda as reposicoes `PENDENTE` daquele produto para `RESOLVIDA` e preenche `dataResolucao`. Assim o Worker nao precisa saber das entradas.
 
-> Atencao: o `_id` do produto e um ObjectId no Mongo; em `reposicoes.produtoId` gravem como **string** (`produto._id.toString()` / `toHexString()`).
+> Atencao: o `_id` do produto e um ObjectId no Mongo; em `reposicao.produtoId` gravem como **string** (`produto._id.toString()` / `toHexString()`).
 
 ## Endpoints
 
@@ -166,6 +167,28 @@ Resposta (campos `semEstoque` e `estoqueBaixo` sao calculados para facilitar a t
 
 Obrigatorios: `produtoId`, `quantidade` (≥ 1).
 
+O fornecedor e opcional e pode vir de duas formas:
+- `fornecedorId`: um fornecedor cadastrado em `/api/fornecedores`;
+- `fornecedor` (nome): a API procura pelo nome (sem diferenciar maiusculas) e, se nao existir, **cadastra automaticamente** na colecao `fornecedores`.
+
+A resposta traz `fornecedorId` e `fornecedor` (nome).
+
+### Fornecedores
+
+| Metodo | Rota | Descricao |
+|---|---|---|
+| GET | `/api/fornecedores` | Lista fornecedores ativos (`?nome=` filtra) |
+| GET | `/api/fornecedores/{id}` | Detalhe |
+| POST | `/api/fornecedores` | Cadastra (201). Nome repetido → 409 |
+| PUT | `/api/fornecedores/{id}` | Edita |
+| DELETE | `/api/fornecedores/{id}` | Desativa (204) |
+
+```json
+{ "nome": "Distribuidora Central", "cnpj": "34.567.890/0001-12", "telefone": "(11) 3333-3003", "email": "contato@distcentral.example" }
+```
+
+Obrigatorio: `nome`.
+
 ### Vendas
 
 | Metodo | Rota | Descricao |
@@ -193,6 +216,26 @@ Regras:
 - Se qualquer item nao tiver estoque suficiente, **a venda inteira e recusada** (HTTP 422) e nada e baixado.
 - A baixa e atomica no MongoDB: duas vendas simultaneas nao conseguem vender a mesma ultima unidade.
 - Itens repetidos do mesmo produto sao somados.
+
+### Dados de exemplo (requisito R3)
+
+| Metodo | Rota | Descricao |
+|---|---|---|
+| POST | `/api/dados-exemplo` | Carrega dados ficticios de uma padaria/mercadinho. Recusa (422) se ja houver produtos |
+| POST | `/api/dados-exemplo?limpar=true` | **Apaga todas as colecoes** e carrega de novo |
+
+Carrega 3 fornecedores, 12 produtos (com entrada de estoque de cada um) e 20 vendas espalhadas pelos ultimos 14 dias.
+Dois produtos (acucar e suco) terminam com estoque zero, entao em ate 1 minuto o Worker registra a reposicao deles.
+
+```powershell
+Invoke-RestMethod -Method Post "http://localhost:8080/api/dados-exemplo?limpar=true"
+```
+```bash
+curl -X POST "http://localhost:8080/api/dados-exemplo?limpar=true"
+```
+
+No Kubernetes, como a API nao e exposta fora do cluster, use o frontend (o Nginx repassa `/api/`) ou um port-forward:
+`kubectl -n estoque port-forward svc/api 9090:8080` e chame `http://localhost:9090/api/dados-exemplo?limpar=true`.
 
 ### Relatorios e dashboard
 

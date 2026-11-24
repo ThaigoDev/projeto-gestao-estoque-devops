@@ -24,6 +24,8 @@ public interface ProdutoRepository extends MongoRepository<Produto, String> {
 
     boolean existsByCodigo(String codigo);
 
+    boolean existsByIdAndAtivoTrue(String id);
+
     long countByAtivoTrue();
 
     long countByAtivoTrueAndQuantidadeEstoqueLessThanEqual(int quantidade);

@@ -67,7 +67,7 @@ public class ProdutoService {
     public Produto criar(ProdutoRequest req) {
         String codigo = normalizar(req.codigo());
         if (codigo != null && produtoRepository.existsByCodigo(codigo)) {
-            throw new DuplicateKeyException("codigo duplicado");
+            throw new DuplicateKeyException("Ja existe um produto com este codigo");
         }
 
         Produto produto = new Produto();

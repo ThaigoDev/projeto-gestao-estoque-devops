@@ -1,4 +1,4 @@
-# Worker (Pessoa 3). Verifica o estoque a cada minuto e grava em "reposicoes".
+# Worker (Pessoa 3). Verifica o estoque a cada minuto e grava em "reposicao".
 # Uma unica replica: com mais de uma, a checagem rodaria em duplicidade.
 apiVersion: apps/v1
 kind: Deployment

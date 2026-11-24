@@ -59,7 +59,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DuplicateKeyException.class)
     public ResponseEntity<Map<String, Object>> duplicado(DuplicateKeyException ex) {
-        return erro(HttpStatus.CONFLICT, "Ja existe um produto com este codigo", null);
+        // Nossas mensagens comecam com "Ja existe"; as do driver do Mongo sao tecnicas demais para a tela
+        String mensagem = ex.getMessage() != null && ex.getMessage().startsWith("Ja existe")
+                ? ex.getMessage()
+                : "Ja existe um registro com estes dados (codigo ou nome duplicado)";
+        return erro(HttpStatus.CONFLICT, mensagem, null);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

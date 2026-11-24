@@ -25,6 +25,10 @@ public class EntradaMercadoria {
     @Field(targetType = FieldType.DECIMAL128)
     private BigDecimal custoUnitario;
 
+    /** Referencia para a colecao "fornecedores" (nulo se a entrada nao tiver fornecedor). */
+    @Indexed
+    private String fornecedorId;
+    /** Nome do fornecedor no momento da entrada. */
     private String fornecedor;
     private String observacao;
 
@@ -44,6 +48,8 @@ public class EntradaMercadoria {
     public void setQuantidade(int quantidade) { this.quantidade = quantidade; }
     public BigDecimal getCustoUnitario() { return custoUnitario; }
     public void setCustoUnitario(BigDecimal custoUnitario) { this.custoUnitario = custoUnitario; }
+    public String getFornecedorId() { return fornecedorId; }
+    public void setFornecedorId(String fornecedorId) { this.fornecedorId = fornecedorId; }
     public String getFornecedor() { return fornecedor; }
     public void setFornecedor(String fornecedor) { this.fornecedor = fornecedor; }
     public String getObservacao() { return observacao; }
